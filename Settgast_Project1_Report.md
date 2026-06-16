@@ -8,7 +8,7 @@ June 17, 2026
 
 ## Abstract
 
-This project investigates the capability of a fully-connected multi-task neural network to solve the magnetic inverse problem: given simultaneous field measurements from a 29-station global magnetometer array, predict the 3D position and pole type (monopole or dipole) of an ionospheric magnetic source. Data was generated using a custom Python-based Magnetometer Time Series Simulator (MTSS) that computes exact dipole and monopole field equations with additive Gaussian noise. Three sequential hyperparameter experiments were conducted using the Optuna Bayesian optimization framework, progressively refining the search space and dataset design. The final model achieved a source type classification accuracy of 97.64% and a 3D position RMSE of 0.1874 in normalized [0,1] space on a clean held-out test set. Analysis of the position error plateau across all experiments suggests the model is approaching the Bayes error floor imposed by the geometry of the sensor array and the inherent ambiguity of the magnetic inverse problem.
+This project investigates the capability of a fully-connected multi-task neural network to solve the magnetic inverse problem: given simultaneous field measurements from a 29-station global magnetometer array, predict the 3D position and pole type (monopole or dipole) of an ionospheric magnetic source. Data was generated using a custom Python-based Magnetometer Time Series Simulator (MTSS) that computes exact dipole and monopole field equations with additive Gaussian noise. Three sequential hyperparameter experiments were conducted using the Optuna Bayesian optimization framework, progressively refining the search space and dataset design. Two independent Optuna runs of the final experiment converged on different network architectures (a four-layer and a three-layer backbone) yet reached essentially identical held-out performance — a source-type classification accuracy of 97.4–97.6% and a per-axis position RMSE of ≈0.187 in normalized [0,1] space — providing an informal reproducibility benchmark for the stochastic hyperparameter search. The repository notebook embeds the second run, which achieved 97.42% accuracy and a 0.1875 scaled per-axis RMSE, corresponding to a mean 3D position error of about 6,080 km. Analysis of the position error plateau across all experiments suggests the model is approaching the Bayes error floor imposed by the geometry of the sensor array and the inherent ambiguity of the magnetic inverse problem.
 
 ---
 
@@ -206,32 +206,34 @@ Experiment 3 addressed the data coverage ceiling identified in Experiments 1 and
 
 **Epochs per trial:** 75 | **Final model epochs:** 400 | **Early stopping patience:** 50
 
-**Best trial parameters (Trial 15):**
+**A note on the two runs (reproducibility benchmark).** Because Optuna's TPE search is stochastic, Experiment 3 was carried out twice as independent searches. **Run A** is the original tuning run; **Run B** is a later reproduction and is the run embedded in the repository notebook. The two runs settled on noticeably different winning architectures — Run A a four-layer backbone, Run B a three-layer backbone — yet produced essentially identical held-out performance. This serves as an informal reproducibility benchmark: it reinforces the central finding (Section 4.1) that this problem is data- and physics-limited rather than architecture-limited, since the search can pick quite different network shapes of equal quality. (Run B ran both its search and its final training on the full 3,200-position / 64,000-sample dataset; Run A's search used the 1,600-position intermediate set before the 3,200-position final fit. Seeds — `TPESampler(seed=42)`, `torch.manual_seed(42)` — were added to the notebooks afterward, so any single future run is now reproducible; the two runs reported here predate that and are genuinely independent.)
 
-| Parameter | Value |
-|-----------|-------|
-| `n_layers` | 4 |
-| `hidden_dim` | 448 |
-| `decay_factor` | 0.965 |
-| `hidden_dims` | [448, 432, 417, 402] |
-| `n_loc_layers` | 3 |
-| `dropout_rate` | 0.179 |
-| `weight_decay` | 8.0e-4 |
-| `bn_momentum` | 0.166 |
-| `learning_rate` | 1.86e-4 |
-| `grad_clip` | 4.196 |
-| `huber_beta` | 0.853 |
-| `loc_weight` | 0.562 |
-| `type_weight` | 0.508 |
+**Best trial parameters — two independent Optuna runs:**
 
-**Results:**
+| Parameter | Run A (Trial 15) | Run B (Trial 23) |
+|-----------|------------------|------------------|
+| `n_layers` | 4 | 3 |
+| `hidden_dim` | 448 | 448 |
+| `decay_factor` | 0.965 | 0.892 |
+| `hidden_dims` | [448, 432, 417, 402] | [448, 399, 356] |
+| `n_loc_layers` | 3 | 2 |
+| `dropout_rate` | 0.179 | 0.226 |
+| `weight_decay` | 8.0e-4 | 1.8e-4 |
+| `bn_momentum` | 0.166 | 0.202 |
+| `learning_rate` | 1.86e-4 | 1.48e-4 |
+| `grad_clip` | 4.196 | 4.400 |
+| `huber_beta` | 0.853 | 0.960 |
+| `loc_weight` | 0.562 | 0.546 |
+| `type_weight` | 0.508 | 0.503 |
 
-| Metric | Value |
-|--------|-------|
-| Best val loss | 0.0546 |
-| Final model early stopping epoch | 142 |
-| Test RMSE (scaled) | **0.1874** |
-| Test type accuracy | **97.64%** |
+**Results — two independent runs:**
+
+| Metric | Run A | Run B (committed) |
+|--------|-------|-------------------|
+| Best val loss | 0.0546 | 0.0531 |
+| Final model early-stopping epoch | 142 | 162 |
+| Test RMSE (scaled, per-axis) | 0.1874 | **0.1875** |
+| Test type accuracy | 97.64% | **97.42%** |
 
 **Key findings:** For the first time across all experiments, the RMSE meaningfully decreased — from ~0.191 to 0.1874. This confirms that the plateau in Experiments 1 and 2 was a data coverage ceiling. More independent spatial positions directly improved position prediction. The val loss improvement (0.0642 → 0.0546) was more modest than the jump from Experiment 1 to 2, suggesting that with more data the model naturally becomes better calibrated and the loss function tuning matters less.
 
@@ -246,7 +248,8 @@ Experiment 3 addressed the data coverage ceiling identified in Experiments 1 and
 | Baseline (default config) | 16,000 samples | — | 0.1906 | 97.85% |
 | Experiment 1 | 16,000 samples | 0.1009 | 0.1915 | 97.85% |
 | Experiment 2 | 16,000 samples | 0.0642 | ~0.191 | ~97.5% |
-| Experiment 3 | 32,000 samples | 0.0546 | **0.1874** | **97.64%** |
+| Experiment 3 (Run A) | 64,000 samples | 0.0546 | 0.1874 | 97.64% |
+| Experiment 3 (Run B, committed) | 64,000 samples | 0.0531 | **0.1875** | **97.42%** |
 
 ### 5.2 Final Model Performance
 
@@ -256,30 +259,34 @@ The final model was evaluated on the clean held-out test set of approximately 11
 
 | Metric | Value (scaled) | Approximate km |
 |--------|---------------|----------------|
-| RMSE | 0.1874 | ~650 km |
-| MAE | — | *[fill from eval cell output]* |
-| Median error | — | *[fill from eval cell output]* |
-| 90th percentile | — | *[fill from eval cell output]* |
+| RMSE (per-axis) | 0.1875 | ~3,510 km/axis |
+| RMSE (3D Euclidean) | 0.3249 | 6,078 km |
+| MAE (3D) | — | 4,758 km |
+| Median error (3D) | — | 7,117 km |
+| 90th percentile (3D) | — | 9,035 km |
+| 95th percentile (3D) | — | 9,271 km |
 
-> *Note: km values marked for completion after running the evaluation cell in the final notebook.*
+> *Values are from the committed Run B. The per-axis RMSE (0.1875) is the cross-experiment comparison metric used in Sections 4–5; the 3D Euclidean distance (0.3249 scaled ≈ √3 × the per-axis value) is the physical position error reported in km. The earlier "~650 km" figure was an order-of-magnitude error — see Section 5.3.*
 
 **Source type classification:**
 
-| Metric | Value |
-|--------|-------|
-| Overall accuracy | 97.64% |
-| Monopole precision | *[fill from classification report]* |
-| Dipole precision | *[fill from classification report]* |
-| Monopole recall | *[fill from classification report]* |
-| Dipole recall | *[fill from classification report]* |
+| Metric | Value (Run B, committed) |
+|--------|--------------------------|
+| Overall accuracy | 97.42% |
+| Monopole precision | 1.000 |
+| Dipole precision | 0.951 |
+| Monopole recall | 0.948 |
+| Dipole recall | 1.000 |
 
-> *Note: per-class metrics marked for completion after running the evaluation cell.*
+> *Per-class metrics from the committed Run B evaluation. The asymmetry — perfect monopole precision and perfect dipole recall — means every source labeled "monopole" truly is one, while ~5% of monopoles are misclassified as dipoles (monopole recall 0.948). Run A reached 97.64% overall accuracy.*
 
 ### 5.3 Interpretation of Position Error
 
-A position RMSE of 0.1874 in [0,1] scaled space represents approximately 650 km average 3D error across a source shell spanning altitudes of 800–3,100 km above Earth's surface. To contextualize this number:
+The model's per-axis position RMSE of 0.1875 in [0,1] scaled space corresponds to a mean 3D position error of about **6,078 km** (MAE 4,758 km, median 7,117 km) across a source shell spanning altitudes of 800–3,100 km above Earth's surface. (An earlier draft quoted ~650 km; that understated the error by roughly an order of magnitude — converting the normalized error across the ±9,500 km coordinate range gives several thousand kilometres per axis.) To contextualize this number:
 
 The sources are distributed across a spherical shell visible from 29 ground stations concentrated in certain geographic regions. For sources well above the array center with strong field contrast across stations, position prediction is relatively accurate. For sources near the edge of the array's geometric coverage — where the field is nearly uniform across all sensors — the inverse problem becomes fundamentally ambiguous. No model can reliably distinguish two nearby positions when their sensor signatures are nearly identical.
+
+**Regression toward the array center.** The sheer size of this error is driven less by small local mistakes than by a characteristic failure mode of the regression head: when the sensor signature is ambiguous, the model minimizes expected loss by predicting near the *centroid* of the source distribution — effectively the geocenter — rather than committing to a specific shell location. The evidence is direct. The 90th-percentile error (9,035 km) approaches the outer shell radius (~9,500 km), meaning roughly 10% of sources are predicted almost at the center of the array. At the same time, the per-axis RMSE (≈3,510 km) is well below the ≈4,820 km that *pure* center-prediction would produce, so the model does recover about half of the positional variance — but the unexplained half collapses toward the center, and that collapse dominates the kilometre-scale error. This is the spatial signature of the moment ambiguity and sensor-geometry limits discussed in Section 6.
 
 This is reflected in the altitude error analysis: position error is expected to increase with altitude due to the 1/r³ falloff of the dipole field, which reduces field contrast across stations at greater distances.
 
@@ -303,9 +310,17 @@ The Bayes error was estimated using the nearest-neighbor proxy method. For each 
 
 To prevent noise-realization bias (where the nearest neighbor is simply another noise draw of the same clean field at the same position), the training reference set was subsampled to one sample per unique (position, type) configuration.
 
-**Results:** *[fill from Bayes error cell output after running]*
+**Results (committed Run B):**
 
-If the nearest-neighbor RMSE is close to the model's actual RMSE (0.1874), this is strong evidence that the model is near-optimal for this sensor array. If a meaningful gap exists, more data or a physics-informed architecture could reduce error further.
+| Metric | Value |
+|--------|-------|
+| Nearest-neighbor proxy RMSE (scaled) | 0.4838 |
+| Nearest-neighbor proxy RMSE (km) | 9,060 km |
+| Proxy MAE (km) | 6,743 km |
+| Proxy median (km) | 4,733 km |
+| Model 3D RMSE (scaled / km) | 0.3249 / 6,078 km |
+
+Notably, the nearest-neighbor proxy RMSE (0.4838 scaled / ~9,060 km) is *larger* than the model's own 3D error (0.3249 scaled / ~6,078 km). This does not mean the model beats the Bayes floor; rather, this particular proxy is a loose, inflated estimate here, because it measures each clean test point against the nearest *noisy* training reading after aggressive subsampling (one sample per position), so the measured gap includes noise- and sampling-induced distance on top of the true ambiguity. The qualitative takeaway holds: the irreducible ambiguity in this problem is large — of the same order as the model's error — consistent with the regression-toward-center behavior in Section 5.3 and supporting the conclusion that the model is limited by the physics of the inverse problem rather than by capacity or optimization. A tighter Bayes estimate (clean-vs-clean readings, or an analytic moment-marginalized bound) is left to future work.
 
 ---
 
@@ -339,7 +354,7 @@ The sensor array also has geographic coverage gaps. Ground-based magnetometer ne
 
 ## 8. Conclusion
 
-This project demonstrated that a fully-connected multi-task neural network can learn to simultaneously localize and classify ionospheric magnetic sources from ground-based magnetometer array measurements. The best model achieved 97.64% source type accuracy and a 3D position RMSE of 0.1874 in normalized space (~650 km) on a clean held-out test set.
+This project demonstrated that a fully-connected multi-task neural network can learn to simultaneously localize and classify ionospheric magnetic sources from ground-based magnetometer array measurements. Two independent Optuna runs of the final experiment reached essentially identical held-out performance despite selecting different architectures (four- vs. three-layer backbones): 97.4–97.6% source-type accuracy and a per-axis position RMSE of ≈0.187 in normalized space. The committed model (Run B) achieves 97.42% accuracy and a mean 3D position error of about 6,078 km — large in absolute terms because of the regression-toward-center behavior imposed by the inverse problem's ambiguity (Section 5.3).
 
 Three key findings emerged from the experimental progression:
 

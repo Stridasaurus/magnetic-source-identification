@@ -340,7 +340,7 @@ Notably, the nearest-neighbor proxy RMSE (0.4838 scaled / ~9,060 km) is *larger*
 
 **The high optimal weight decay (~8e-4)** relative to typical deep learning defaults (1e-5 to 1e-4) reflects the difficulty of this inverse problem. Strong L2 regularization prevents the model from memorizing the training set's noise realizations and forces it to learn the underlying physics.
 
-**The near-MSE optimal loss** (`huber_beta ≈ 0.85–0.93`) is physically interpretable. With well-controlled Gaussian noise and normalized targets, the error distribution is approximately Gaussian — MSE is the natural loss for Gaussian errors. The Huber formulation provides marginal robustness without sacrificing the quadratic penalty that drives small-error precision.
+**The near-MSE optimal loss** (`huber_beta ≈ 0.85–0.93`) is physically interpretable. With well-controlled Gaussian noise and normalized targets, the error distribution is approximately Gaussian — MSE is the natural loss for Gaussian errors. The Huber formulation provides marginal robustness without sacrificing the quadratic penalty that drives small-error precision. The independent Run B (Section 4.3) corroborates this: its search settled on `huber_beta = 0.96` — even closer to pure MSE — while matching the same held-out performance, indicating the near-MSE preference is a stable property of the problem rather than an artifact of a single search.
 
 ### 7.3 Limitations
 

@@ -4,6 +4,10 @@
 *.db
 optuna_experiment*.db
 
+# ...but DO keep the archived winning models (the saved best model per experiment)
+!winners/
+!winners/*.pt
+
 # --- Jupyter / Python ---
 .ipynb_checkpoints/
 __pycache__/

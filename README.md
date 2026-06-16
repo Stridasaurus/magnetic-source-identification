@@ -62,7 +62,3 @@ Data generation (`seed 42` train grid, `seed 123` test grid), the train/validati
 (`random_state=42`), and the Optuna sampler (`TPESampler(seed=42)`) are all seeded, so the
 search is reproducible from a clean run. Reported metrics may still vary by a small margin
 due to GPU floating-point nondeterminism.
-
-> **Tip:** committed notebooks keep their saved outputs as a record. For the cleanest
-> submission, do one **Restart & Run All** in Colab and re-save so execution counts are
-> sequential and every cell's output reflects the final code.

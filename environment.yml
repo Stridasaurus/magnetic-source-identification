@@ -1,0 +1,13 @@
+name: dl-p1-env
+channels:
+
+dependencies:
+
+  - pip
+  - pip:
+    - ipykernel==7.3.0
+    - matplotlib==3.11.0
+    - optuna==4.9.0
+    - pandas==3.0.3
+    - scikit-learn==1.9.0
+    - torch==2.4.1

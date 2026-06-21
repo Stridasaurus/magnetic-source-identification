@@ -19,7 +19,7 @@ sensor input), `Settgast_Project1_Report.md` (written report).
 | `02_Experiment_2.ipynb` | Loss/optimizer focus; locks Exp 1 winners. Same dataset as Exp 1. | 400 positions × 20 noise = 16,000 |
 | `03_Experiment_3.ipynb` | Larger dataset + grad_clip fix; full test-set evaluation, visualization, Bayes-error analysis. | 3,200 positions × 10 noise = 64,000 |
 
-The companion writeup is `Settgast_Project1_Report (1).md` (parent folder).
+The companion writeup is `Settgast_Project1_Report.md` (in this repo).
 
 ## Each experiment notebook is self-contained
 

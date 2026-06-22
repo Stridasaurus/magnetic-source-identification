@@ -18,6 +18,8 @@ sensor input), `Settgast_Project1_Report.md` (written report).
 | `01_Experiment_1.ipynb` | Broad architecture search (Optuna, 14 hyperparameters). | 400 positions × 20 noise = 16,000 |
 | `02_Experiment_2.ipynb` | Loss/optimizer focus; locks Exp 1 winners. Same dataset as Exp 1. | 400 positions × 20 noise = 16,000 |
 | `03_Experiment_3.ipynb` | Larger dataset + grad_clip fix; full test-set evaluation and visualization. | 3,200 positions × 10 noise = 64,000 |
+| `04_Experiment_4.ipynb` | Controlled spherical-output-constraint run (Exp 3 hyperparameters + `SphericalOutputLayer`). | 3,200 positions × 10 noise = 64,000 |
+| `05_Analysis.ipynb` | Cross-experiment analysis: re-evaluates the four `winners/` checkpoints on one clean test set; per-type breakdown; model-free forward-map irreducible-error analysis. Trains nothing. | loads checkpoints |
 
 The companion writeup is `Settgast_Project1_Report.md` (in this repo).
 
@@ -30,7 +32,7 @@ the sensor loader, so any of them runs on its own — you do **not** need to run
 Internal layout of each experiment notebook (markdown section hierarchy):
 
 - **0 · Environment Setup** — `!pip install optuna tqdm` + `L058.txt` upload
-- **1 · Simulation & Model Infrastructure** *(shared, identical across all three)* —
+- **1 · Simulation & Model Infrastructure** *(shared, identical across the experiment notebooks)* —
   1.1 simulator (MTSS), 1.2 sensor loader, 1.3 multi-task network, 1.4 Optuna helpers
 - **2 · Dataset Generation** *(experiment-specific params)* — 2.1 generate, 2.2 preprocess
 - **3 · Experiment N** — the Optuna study + final training
@@ -62,15 +64,16 @@ metrics may still vary slightly due to GPU floating-point nondeterminism.
 - **Source shell:** sources sit on a spherical shell at **800–3,100 km** altitude above
   Earth's surface (geocentric radii 7,171–9,471 km). Code: `min_alt = EARTH_RADIUS + 800`,
   `max_alt = EARTH_RADIUS + 3100`.
-  - Note: the report PDF currently states 400–3,100 km; the notebooks/code use 800 km,
-    and the notebook markdown was deliberately set to 800 to match the code.
+  - Note: the notebooks/code, the notebook markdown, and `Settgast_Project1_Report.md`
+    all use 800 km. (If exporting the report to PDF, confirm it reads 800, not 400.)
 - **Inputs:** 29 sensors × 3 field axes (Bx, By, Bz) → 87 features per sample.
 - **Targets:** `[X, Y, Z, is_monopole, is_dipole]`.
 - **Preprocessing:** `RobustScaler` per axis on inputs; `MinMaxScaler` to [0,1] on
   positions; one-hot → integer class labels for `CrossEntropyLoss`.
 - **Dataset trade-off:** noise realizations are correlated augmentation; unique positions
   add independent spatial coverage. Exp 3 trades the former for the latter.
-- **Final model (Exp 3):** test type accuracy ≈ 97.64%, position RMSE ≈ 0.1874 (scaled).
+- **Final model (Exp 3, committed Run B):** test type accuracy ≈ 97.42%, position RMSE ≈ 0.1875
+  (per-axis, scaled). Run A reported 97.64% / 0.1874; the repo notebook embeds Run B.
 - **Known code note:** the base `ModelTrainer.train_epoch()` hardcodes `max_norm=1.0`,
   so `grad_clip` tuning had no effect in Exp 2. Exp 3 fixes this via the `TunableTrainer`
   subclass that applies `self.grad_clip`.

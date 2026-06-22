@@ -257,9 +257,13 @@ To compare the four models on an identical footing, all four saved checkpoints w
 
 The 3D Euclidean RMSE (≈ √3 × the per-axis value) is the physical position error reported in kilometres; the per-axis RMSE used in Sections 4.1–4.4 is the cross-experiment comparison metric inherited from the search objective.
 
+![Position-error distributions and cumulative curves for all four models on the common clean test set. Every distribution is bimodal; the spherical constraint (Exp 4) trades a tighter low-error mode for a long high-error tail.](figures/error_distributions_cdf.png)
+
 ### 5.2 The Decisive Result — Error by Source Type
 
 Splitting the position error by source type is the single most informative view in this project. It explains every aggregate number in the table above.
+
+![Experiment 3 position error split by source type. Monopole errors cluster near ~700 km while dipole errors form a separate cluster near ~8,300 km — the two regimes the aggregate RMSE averages together.](figures/error_by_source_type.png)
 
 | Experiment | Monopole median (km) | Monopole RMSE (km) | Dipole median (km) | Dipole RMSE (km) |
 |------------|----------------------|--------------------|--------------------|------------------|
@@ -324,7 +328,11 @@ The anchors above are inferred from model behaviour. The same ambiguity can be d
 | Monopole | ~4.9 | ~0.2% |
 | Dipole | ~0.001 | ~68% |
 
+![Forward-map degeneracy, computed with no trained model. For each reference source, the fraction of the shell that can reproduce its clean reading within the sensor-noise floor: dipole readings are consistent with most of the shell (median ~68%), monopole readings with almost none (~0.2%).](figures/forward_map_degeneracy.png)
+
 A clean dipole reading is consistent within noise with roughly two-thirds of the source shell — its position is genuinely undetermined — whereas a monopole reading is consistent with essentially none of it (~0.2%), which pins the position. This confirms, from the physics alone, the floor that the Section 5.2 anchors infer from the models: the dipole field is both underdetermined by its unknown moment and faint relative to sensor noise, so no architecture, dataset, or optimizer can recover what the readings do not carry.
+
+*Why this floor appears even on the noiseless test set.* The model is trained on **noisy** data, where the dipole signal sits ~750× below the noise floor; it therefore learns the squared-error-optimal geocenter hedge and carries that behaviour onto clean test inputs. The irreducible floor is thus a property of the training regime. The noiseless test set (Section 2.2) isolates localization skill from noise sensitivity, and the dipole result shows that skill was never learnable from the noisy fields the network actually saw.
 
 ## 7. Discussion
 

@@ -2,6 +2,7 @@
 *.pt
 *.pth
 *.db
+*.npz
 optuna_experiment*.db
 
 # ...but DO keep the archived winning models (the saved best model per experiment)

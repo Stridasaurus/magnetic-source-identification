@@ -9,6 +9,12 @@ Series Simulator (MTSS); hyperparameters are searched with Optuna.
 
 The full written report is [`Settgast_Project1_Report.md`](Settgast_Project1_Report.md).
 
+**Key finding:** the aggregate position error hides two regimes. *Monopole* sources are
+localized well (~720 km) and improve with more data; *dipole* sources sit at ~8,300 km —
+the geocentric-radius scale — in every experiment and never respond to data, architecture,
+or loss changes, because their inverse problem is limited by moment ambiguity. See the
+report for the full monopole/dipole decomposition.
+
 ## Repository layout
 
 | File | Description |
@@ -16,7 +22,10 @@ The full written report is [`Settgast_Project1_Report.md`](Settgast_Project1_Rep
 | `00_Setup_and_Simulation.ipynb` | Optional overview: install, simulator class, sensor loader, 3D array visualization. |
 | `01_Experiment_1.ipynb` | Broad architecture search (Optuna over 14 hyperparameters). |
 | `02_Experiment_2.ipynb` | Loss/optimizer focus; locks Experiment 1's winners. |
-| `03_Experiment_3.ipynb` | Larger dataset + grad_clip fix, plus full test-set evaluation, visualizations, and Bayes-error analysis. |
+| `03_Experiment_3.ipynb` | Larger dataset + grad_clip fix; single-model test-set evaluation and visualizations. |
+| `04_Experiment_4.ipynb` | Controlled spherical-output-constraint experiment (Exp 3 hyperparameters, spherical regression head). |
+| `05_Analysis.ipynb` | Cross-experiment analysis: uniform re-evaluation of all four models, per-type error breakdown, visualizations, and the corrected Bayes-error estimate. |
+| `winners/` | Archived best model per experiment (e.g. `magnetic_model_experiment4.pt`). |
 | `L058.txt` | 29-station magnetometer array (sensor positions). Required input. |
 | `Settgast_Project1_Report.md` | Written report. |
 | `requirements.txt` | Pinned Python environment (Python 3.12). |
@@ -29,6 +38,10 @@ and sensor-loader cells, so you can run any one on its own without running `00_S
 | Experiment 1 | 400 | 20 | 16,000 |
 | Experiment 2 | 400 | 20 | 16,000 (same as Exp 1) |
 | Experiment 3 | 3,200 | 10 | 64,000 |
+| Experiment 4 | 3,200 | 10 | 64,000 (same as Exp 3) |
+
+`05_Analysis` trains nothing — it loads the four saved checkpoints and re-evaluates them on
+a common clean test set.
 
 ## How to run
 
@@ -40,10 +53,12 @@ and sensor-loader cells, so you can run any one on its own without running `00_S
    in the working directory if present, otherwise prompting you to upload it.
 4. **Runtime → Run all.**
 
-Outputs: each run writes an Optuna study (`optuna_experiment*.db`) and saves the trained
-model (`magnetic_model_experiment*.pt`); download these from the Colab file panel before
-the session expires. Experiment 3's evaluation cell loads `magnetic_model_experiment3.pt`,
-which its own training cell produces earlier in the same run.
+Outputs: each training run writes an Optuna study (`optuna_experiment*.db`, Experiments
+1–3) and saves the trained model (`magnetic_model_experiment*.pt`); download these from the
+Colab file panel before the session expires. Experiments 3 and 4 load their own checkpoint
+in the same run for evaluation. `05_Analysis` needs all four checkpoints
+(`magnetic_model_experiment1–4.pt`) present in the session to build the cross-experiment
+comparison.
 
 > **Note:** each Colab notebook gets its own runtime — variables do **not** carry between
 > notebook files. That's why every experiment notebook is self-contained.
@@ -59,6 +74,6 @@ prompting for an upload. (A GPU is recommended; CPU works but training is slow.)
 ## Reproducibility
 
 Data generation (`seed 42` train grid, `seed 123` test grid), the train/validation split
-(`random_state=42`), and the Optuna sampler (`TPESampler(seed=42)`) are all seeded, so the
-search is reproducible from a clean run. Reported metrics may still vary by a small margin
-due to GPU floating-point nondeterminism.
+(`random_state=42`), `torch.manual_seed(42)`, and the Optuna sampler (`TPESampler(seed=42)`)
+are all seeded, so the search is reproducible from a clean run. Reported metrics may still
+vary by a small margin due to GPU floating-point nondeterminism.

@@ -24,7 +24,7 @@ report for the full monopole/dipole decomposition.
 | `02_Experiment_2.ipynb` | Loss/optimizer focus; locks Experiment 1's winners. |
 | `03_Experiment_3.ipynb` | Larger dataset + grad_clip fix; single-model test-set evaluation and visualizations. |
 | `04_Experiment_4.ipynb` | Controlled spherical-output-constraint experiment (Exp 3 hyperparameters, spherical regression head). |
-| `05_Analysis.ipynb` | Cross-experiment analysis: uniform re-evaluation of all four models, per-type error breakdown, visualizations, and the corrected Bayes-error estimate. |
+| `05_Analysis.ipynb` | Cross-experiment analysis: uniform re-evaluation of all four models, per-type error breakdown, visualizations, and a model-free forward-map analysis of the irreducible-error floor. |
 | `winners/` | Archived best model per experiment (e.g. `magnetic_model_experiment4.pt`). |
 | `L058.txt` | 29-station magnetometer array (sensor positions). Required input. |
 | `Settgast_Project1_Report.md` | Written report. |

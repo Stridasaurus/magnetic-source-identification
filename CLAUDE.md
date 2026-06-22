@@ -17,7 +17,7 @@ sensor input), `Settgast_Project1_Report.md` (written report).
 | `00_Setup_and_Simulation.ipynb` | Optional overview / sanity check: install, simulator class, sensor loader, 3D array visualization. | demo grid only |
 | `01_Experiment_1.ipynb` | Broad architecture search (Optuna, 14 hyperparameters). | 400 positions × 20 noise = 16,000 |
 | `02_Experiment_2.ipynb` | Loss/optimizer focus; locks Exp 1 winners. Same dataset as Exp 1. | 400 positions × 20 noise = 16,000 |
-| `03_Experiment_3.ipynb` | Larger dataset + grad_clip fix; full test-set evaluation, visualization, Bayes-error analysis. | 3,200 positions × 10 noise = 64,000 |
+| `03_Experiment_3.ipynb` | Larger dataset + grad_clip fix; full test-set evaluation and visualization. | 3,200 positions × 10 noise = 64,000 |
 
 The companion writeup is `Settgast_Project1_Report.md` (in this repo).
 
@@ -34,7 +34,7 @@ Internal layout of each experiment notebook (markdown section hierarchy):
   1.1 simulator (MTSS), 1.2 sensor loader, 1.3 multi-task network, 1.4 Optuna helpers
 - **2 · Dataset Generation** *(experiment-specific params)* — 2.1 generate, 2.2 preprocess
 - **3 · Experiment N** — the Optuna study + final training
-- (Exp 3 only) **4 · Test-Set Evaluation** (4.1 metrics, 4.2 visualizations, 4.3 Bayes) and
+- (Exp 3 only) **4 · Test-Set Evaluation** (4.1 metrics, 4.2 visualizations) and
   **5 · Analysis & Conclusions**
 
 ## How to run (Google Colab)

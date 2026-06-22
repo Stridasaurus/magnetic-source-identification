@@ -8,7 +8,7 @@ June 22, 2026
 
 ## Abstract
 
-This project investigates the capability of a fully-connected multi-task neural network to solve the magnetic inverse problem: given simultaneous field measurements from a 29-station global magnetometer array, predict the 3D position and pole type (monopole or dipole) of an ionospheric magnetic source. Data was generated using a custom Python-based Magnetometer Time Series Simulator (MTSS) that computes exact dipole and monopole field equations with additive Gaussian noise. Four sequential experiments were conducted: three Optuna-driven hyperparameter studies (architecture search, loss/optimizer tuning, and a dataset-coverage expansion) followed by a controlled architectural intervention that constrains the regression head to output positions on the source shell. Across every experiment the source-type classifier reached 97–98% accuracy, while the aggregate position RMSE plateaued near 0.187 (per-axis, normalized) — about 6,080 km of 3D error. The decisive finding is that this aggregate number conceals two very different sub-problems: **monopole** sources are localized well (~720 km, ~8% of the shell radius) and *do* improve with more data, whereas **dipole** sources sit at ~8,300 km — the geocentric-radius scale — in every experiment and never respond to data, architecture, or loss changes. The spherical-output experiment confirms the cause: it forbids the regression-toward-center hedge that is RMSE-optimal for ambiguous dipoles, leaving monopoles essentially unchanged but pushing dipole predictions to ~11,000 km, the mean separation of two random points on the shell. The residual error is therefore dominated not by model capacity but by the irreducible moment ambiguity of the dipole inverse problem under this sensor geometry.
+This project investigates the capability of a fully-connected multi-task neural network to solve the magnetic inverse problem: given simultaneous field measurements from a 29-station global magnetometer array, predict the 3D position and pole type (monopole or dipole) of an ionospheric magnetic source. Data was generated using a custom Python-based Magnetometer Time Series Simulator (MTSS) that computes exact dipole and monopole field equations with additive Gaussian noise. Four sequential experiments were conducted: three Optuna-driven hyperparameter studies (architecture search, loss/optimizer tuning, and a dataset-coverage expansion) followed by a controlled architectural intervention that constrains the regression head to output positions on the source shell. Across every experiment the source-type classifier reached 97–98% accuracy, while the aggregate position RMSE plateaued near 0.187 (per-axis, normalized) — about 6,080 km of 3D error. The decisive finding is that this aggregate number conceals two very different sub-problems: **monopole** sources are localized well (~720 km, ~8% of the shell radius) and *do* improve with more data, whereas **dipole** sources sit at ~8,300 km — the geocentric-radius scale — in every experiment and never respond to data, architecture, or loss changes. The spherical-output experiment confirms the cause: it forbids the regression-toward-center hedge that is RMSE-optimal for ambiguous dipoles, leaving monopoles essentially unchanged but pushing dipole predictions to ~11,000 km, the mean separation of two random points on the shell. The residual error is therefore dominated not by model capacity but by the irreducible moment ambiguity of the dipole inverse problem under this sensor geometry — compounded by the dipole's 1/r³ falloff, which leaves its field faint relative to sensor noise at ionospheric range.
 
 ---
 
@@ -21,7 +21,7 @@ The goals of this study were:
 1. Build a simulation pipeline capable of generating large, labeled datasets of realistic magnetic field observations from monopole and dipole sources distributed across an ionospheric shell.
 2. Train a multi-task feedforward neural network to simultaneously predict source position (regression) and source type (classification) from raw sensor readings.
 3. Use systematic hyperparameter optimization to identify the best architecture and training configuration for this problem.
-4. Characterize the performance ceiling of the learned model and assess how close it approaches the theoretical Bayes error for this sensor geometry and noise level.
+4. Characterize the performance ceiling of the learned model and the irreducible-error floor imposed by dipole moment ambiguity and sensor geometry for this array and noise level.
 
 This study was conducted solo. All data generation, model design, training, and analysis were performed by the author.
 
@@ -296,46 +296,35 @@ Classification is the easy task. Type accuracy is 97–98% in every experiment. 
 
 ---
 
-## 6. Bayes Error Analysis
+## 6. The Irreducible-Error Floor
 
-### 6.1 Motivation
+### 6.1 Two Sources of Irreducible Ambiguity
 
-Because all data was simulated with full knowledge of the data-generating process, it is possible to estimate the *scale* of the irreducible position ambiguity — the confusion any model would face because different sources can produce nearly identical sensor readings. This arises from two sources:
+Because all data was simulated with full knowledge of the data-generating process, the *irreducible* position error — the error a perfect model would still incur because the sensor readings do not determine the source position — can be characterized directly. It has two compounding sources.
 
-**Moment ambiguity.** A dipole's field depends on both position and moment orientation. Two sources at different positions with different orientations can produce nearly identical readings, so the best any model can do is predict the expected position averaged over all consistent configurations — which need not lie near any particular true position. (This is exactly the dipole floor measured directly in Section 5.2.)
+**Moment ambiguity.** A dipole's field depends on both position and moment orientation. With the moment unknown, different (position, orientation) configurations can produce nearly identical readings, so the best any model can do is predict the average over all consistent positions — which need not lie near any particular true position. (This is exactly the dipole floor measured directly in Section 5.2.)
 
-**Sensor geometry.** The 29 stations are concentrated in certain regions. Sources over sparsely covered areas produce weaker, less spatially distinct field patterns, so their inverse problem is less constrained.
+**Sensor geometry and signal strength.** The 29 stations are clustered — dense over Europe and North America, sparse over the Pacific, Southern Ocean, and poles — so sources over poorly covered regions are weakly constrained. Compounding this, a dipole's field falls off as 1/r³ versus a monopole's 1/r²; at ionospheric range (geocentric radii 7,171–9,471 km) the dipole field is faint relative to the σ = 0.01 sensor noise, while the monopole field sits well above it.
 
-### 6.2 Centroid Nearest-Neighbor Proxy
+### 6.2 The Floor in Closed Form
 
-To put a number on the ambiguity scale, a centroid nearest-neighbor proxy was computed. For each clean test sample, the nearest training *centroid* — the average of the 10 noise realizations of a (position, type) configuration, which approximates that configuration's clean field — is found in scaled input space, and the 3D gap between their true positions is recorded. (Averaging the realizations is essential: an earlier version that queried against raw *noisy* training inputs inflated the proxy to roughly the shell radius, because noise scatters every sample into its own neighborhood.)
+Section 5.3 already pins the floor with two closed-form anchors that require no estimator:
 
-**This proxy estimates the scale of irreducible ambiguity; it is not a strict lower bound.** Two effects bias it upward:
+- **Cartesian dipoles → 8,331 km ≈ the mean shell radius (8,322 km).** A geocenter prediction — the squared-error-optimal hedge for a source whose position is unknown — incurs an error equal to the source's geocentric radius. The 0.1% match means the model recovers essentially no dipole position information.
+- **Spherical dipoles → ~11,000 km ≈ 4R/3 (≈ 11,100 km),** the mean separation of two independent points on the shell — the scale of a shell-constrained guess made with no information.
 
-1. **Grid-spacing floor.** The test grid (seed 123) and training grid (seed 42) do not coincide, so the nearest training centroid sits at a genuinely different position even when the field is fully informative — the gap cannot fall below the grid resolution.
-2. **Difference of two draws.** The proxy compares two samples from the set of positions consistent with a reading, rather than a sample against its conditional mean (the RMSE-optimal target). This inflates it by roughly a further √2.
+The strength of this argument is its *specificity*: an undertrained model would miss by some arbitrary amount, not by two *different* geometric constants, each matching exactly the model whose output constraint predicts it. Monopole error (~720 km, ~8% of the shell radius) is an order of magnitude smaller and falls with more data — the well-posed half of the problem.
 
-A model can therefore legitimately score *below* the proxy. The shell-to-shell proxy is the right yardstick specifically for the shell-constrained model.
+### 6.3 Model-Free Confirmation: Forward-Map Degeneracy
 
-**Results:**
+The anchors above are inferred from model behaviour. The same ambiguity can be demonstrated directly from the forward map, with no trained model, because both field laws are *linear in the source strength*: at a fixed position, a dipole's reading spans a 3-dimensional subspace of the 87-dimensional sensor space (the three moment components), whereas a monopole's spans a 1-dimensional line (the scalar charge). For a reference clean reading one can therefore ask, for every candidate position on the shell, whether some physically valid source there — strength within the simulator's [10¹², 10¹⁴] A·m² prior — reproduces the reading to within the sensor-noise floor ‖noise‖ ≈ σ·√87. The fraction of the shell that qualifies measures the size of the *indistinguishable set*.
 
-| Metric | Value |
-|--------|-------|
-| Proxy 3D RMSE (scaled / km) | 0.4245 / 7,942 km |
-| Proxy median / P90 (km) | 2,907 / 14,017 km |
+| Source type | Clean-signal SNR (‖B‖ / noise floor) | Shell fraction consistent within noise |
+|-------------|--------------------------------------|----------------------------------------|
+| Monopole | ~4.9 | ~0.2% |
+| Dipole | ~0.001 | ~68% |
 
-| Experiment | 3D RMSE (scaled) | vs. proxy | Reading |
-|------------|------------------|-----------|---------|
-| Exp 1 (Cartesian) | 0.3414 | −19.6% | below proxy via interior-mean hedge |
-| Exp 2 (Cartesian) | 0.3383 | −20.3% | below proxy via interior-mean hedge |
-| Exp 3 (Cartesian) | 0.3249 | −23.5% | below proxy via interior-mean hedge |
-| Exp 4 (Spherical) | 0.4187 | −1.4% | **reaches proxy scale** |
-
-The three Cartesian models sit ~20% below the proxy — not because they beat the irreducible floor, but because their RMSE-optimal predictor is the *interior* conditional mean, which a shell-to-shell distance cannot represent. The shell-constrained Experiment 4 model is the only one operating on the proxy's own manifold, and it lands essentially *on* the proxy (−1.4%). This is consistent with Experiment 4 being near the achievable ceiling for a shell-constrained predictor on this array — with the caveat that the proxy is itself an over-estimate (grid floor + difference-of-draws), so "reaches the proxy scale" means *near*, and above, the true Bayes floor rather than at it.
-
-The per-type analysis of Section 5.2 makes the same point more directly than the proxy can: dipole error at the geocentric-radius scale (Cartesian) and the random-shell-point scale (spherical) is the irreducible ambiguity, expressed in closed form.
-
----
+A clean dipole reading is consistent within noise with roughly two-thirds of the source shell — its position is genuinely undetermined — whereas a monopole reading is consistent with essentially none of it (~0.2%), which pins the position. This confirms, from the physics alone, the floor that the Section 5.2 anchors infer from the models: the dipole field is both underdetermined by its unknown moment and faint relative to sensor noise, so no architecture, dataset, or optimizer can recover what the readings do not carry.
 
 ## 7. Discussion
 
@@ -370,7 +359,7 @@ This project demonstrated that a fully-connected multi-task neural network can c
 1. **Architecture matters less than expected.** Across 30 trials in Experiment 1, networks from 2 to 5 layers and 64 to 512 units produced nearly identical RMSE. Capacity is not the bottleneck at the scales tested.
 2. **Loss-function tuning can be misleading.** Experiment 2 cut validation loss by 36% with no change in position error. Raw position error is the honest metric.
 3. **Independent spatial coverage helps — but only the well-posed sub-problem.** The Experiment 3 data expansion improved monopole localization from ~1,240 km to ~720 km while leaving dipole error unchanged at ~8,300 km.
-4. **The residual error is dominated by dipole moment ambiguity, not the model.** Monopoles are well-localized (~720 km) regardless of output head; dipoles sit at the geocentric-radius scale under a Cartesian head (8,331 km ≈ mean shell radius, the regression-toward-center hedge) and at the random-shell-point scale under a spherical head (~11,000 km ≈ 4R/3). No architecture, dataset, optimizer, or output parametrization tried here moved the dipole floor.
+4. **The residual error is dominated by dipole moment ambiguity, not the model.** Monopoles are well-localized (~720 km) regardless of output head; dipoles sit at the geocentric-radius scale under a Cartesian head (8,331 km ≈ mean shell radius, the regression-toward-center hedge) and at the random-shell-point scale under a spherical head (~11,000 km ≈ 4R/3). No architecture, dataset, optimizer, or output parametrization tried here moved the dipole floor. A model-free forward-map check (Section 6.3) independently confirms it: a clean dipole reading is consistent within sensor noise with ~two-thirds of the source shell, versus ~0.2% for a monopole.
 
 Future work should target the moment ambiguity directly — physics-informed inversion that models the forward equations, expanded sensor coverage to close geographic gaps, and richer labels (e.g., predicting moment orientation jointly) — rather than further scaling a model that is already at the physical floor for the half of the problem that is solvable, and at the ambiguity floor for the half that is not.
 

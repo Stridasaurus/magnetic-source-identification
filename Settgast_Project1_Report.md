@@ -306,21 +306,19 @@ The Bayes error for this problem arises from two fundamental sources of ambiguit
 
 ### 6.2 Nearest-Neighbor Proxy Method
 
-The Bayes error was estimated using the nearest-neighbor proxy method. For each clean test sample, the training sample with the most similar sensor readings (closest L2 distance in scaled input space) was found. The 3D position gap between the test sample's true position and its nearest neighbor's true position quantifies how much confusion a perfect model would face: even an ideal predictor cannot distinguish two inputs that are nearly identical but correspond to different positions.
+The Bayes error was estimated using the nearest-neighbor proxy method. For each clean test sample, the training configuration with the most similar sensor readings (closest L2 distance in scaled input space) was found. The 3D position gap between the test sample's true position and its nearest neighbor's true position quantifies how much confusion a perfect model would face: even an ideal predictor cannot distinguish two inputs that are nearly identical but correspond to different positions.
 
-To prevent noise-realization bias (where the nearest neighbor is simply another noise draw of the same clean field at the same position), the training reference set was subsampled to one sample per unique (position, type) configuration.
+To build a valid lower-bound proxy, the training reference set must use clean (or near-clean) field readings. Comparing a clean test query against a raw noisy training reading inflates all L2 distances with noise-induced separation rather than physical ambiguity, turning the proxy into an overestimate rather than a lower bound. The corrected approach averages the 10 noise realizations per (position, type) configuration, reducing noise by ≈√10 and recovering a close approximation of the clean field for each training source. Additionally, the model RMSE used in the comparison is the 3D Euclidean RMSE from the evaluation cell (`rmse_scaled` = 0.3249), not the per-axis checkpoint value (0.1875), which would be a factor of √3 smaller and create an apples-to-oranges comparison.
 
-**Results (committed Run B):**
+**Results:**
 
 | Metric | Value |
 |--------|-------|
-| Nearest-neighbor proxy RMSE (scaled) | 0.4838 |
-| Nearest-neighbor proxy RMSE (km) | 9,060 km |
-| Proxy MAE (km) | 6,743 km |
-| Proxy median (km) | 4,733 km |
 | Model 3D RMSE (scaled / km) | 0.3249 / 6,078 km |
+| Nearest-neighbor proxy RMSE (scaled) | *(re-run cell 4.3 in Colab for corrected value)* |
+| Nearest-neighbor proxy RMSE (km) | *(re-run cell 4.3 in Colab for corrected value)* |
 
-Notably, the nearest-neighbor proxy RMSE (0.4838 scaled / ~9,060 km) is *larger* than the model's own 3D error (0.3249 scaled / ~6,078 km). This does not mean the model beats the Bayes floor; rather, this particular proxy is a loose, inflated estimate here, because it measures each clean test point against the nearest *noisy* training reading after aggressive subsampling (one sample per position), so the measured gap includes noise- and sampling-induced distance on top of the true ambiguity. The qualitative takeaway holds: the irreducible ambiguity in this problem is large — of the same order as the model's error — consistent with the regression-toward-center behavior in Section 5.3 and supporting the conclusion that the model is limited by the physics of the inverse problem rather than by capacity or optimization. A tighter Bayes estimate (clean-vs-clean readings, or an analytic moment-marginalized bound) is left to future work.
+If the corrected proxy RMSE is at or below 0.3249 (scaled), the model is at or near the achievable performance ceiling for this sensor array and noise level. If a positive gap remains, it quantifies the remaining headroom that additional data or a physics-informed architecture could recover. The residual upward bias in the averaged proxy (from ~1/√10 remaining noise and finite configuration coverage) means any positive gap is a conservative upper bound on the true headroom.
 
 ---
 
